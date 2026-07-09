@@ -13,10 +13,11 @@ The following functions are implemented:
 - h5readatt
 - h5info
 - h5disp
-- h5load 
+- h5load
+- h5delete
 ```
 
-The function `h5load` (load entire file or group) is not supported in MATLAB.
+The functions `h5load` (load entire file or group) and `h5delete` (delete dataset, group, or attribute) are not supported in MATLAB.
 
 `hdf5oct` can be used to export/import multidimensional array data of class
 
@@ -118,6 +119,15 @@ Group '/'
       charSet: utf8
       Pading: nullterm
 ```
+
+Datasets, groups, and attributes can be removed with `h5delete`:
+
+```matlab
+>> h5delete('test.h5', '/D1')              % delete a dataset
+>> h5delete('test.h5', '/group_1')         % delete a group and its contents
+>> h5delete('test.h5', '/D1/units')        % delete an attribute
+```
+
 # Array storage layout convention
 
 In HDF5, arrays are stored in C-style, [row-major order](https://en.wikipedia.org/wiki/Row-_and_column-major_order). On the other hand, OCTAVE and MATLAB employ fortran-style, column-major storage order.
