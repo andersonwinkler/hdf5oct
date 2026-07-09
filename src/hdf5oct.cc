@@ -34,6 +34,7 @@ namespace h5o = hdf5oct;
 // PKG_ADD: autoload("__h5write__","hdf5oct.oct")
 // PKG_ADD: autoload("__h5writeatt__","hdf5oct.oct")
 // PKG_ADD: autoload("__h5create__","hdf5oct.oct")
+// PKG_ADD: autoload("__h5delete__","hdf5oct.oct")
 // PKG_ADD: autoload("h5info","hdf5oct.oct")
 
 // PKG_DEL: autoload("__h5read__","hdf5oct.oct","remove")
@@ -41,6 +42,7 @@ namespace h5o = hdf5oct;
 // PKG_DEL: autoload("__h5write__","hdf5oct.oct","remove")
 // PKG_DEL: autoload("__h5writeatt__","hdf5oct.oct","remove")
 // PKG_DEL: autoload("__h5create__","hdf5oct.oct","remove")
+// PKG_DEL: autoload("__h5delete__","hdf5oct.oct","remove")
 // PKG_DEL: autoload("h5info","hdf5oct.oct","remove")
 
 // __h5create__(fname,create_file,loc,sz,datatype,chunksize,fillvalue)
@@ -314,6 +316,82 @@ Users should not use this directly. Use h5writeatt.m instead")
         // case H5::ObjectType::UserDataType:
         default:
             error("h5writeatt: location has unsupported object type");
+        }
+    }
+    catch (const H5::Exception &e)
+    {
+        error("%s", e.what());
+    }
+
+    return octave_value_list();
+}
+
+// h5delete(filename,location)
+DEFUN_DLD(__h5delete__, args, , "__h5delete__: backend for h5delete\n\
+Users should not use this directly. Use h5delete.m instead")
+{
+    if (args.length() != 2)
+        error("__h5delete__: wrong # of args");
+    string filename = args(0).string_value();
+    string location = args(1).string_value();
+
+    try
+    {
+        H5::File file(filename, H5::File::ReadWrite);
+
+        if (!h5o::validLocation(location))
+            error("h5delete: %s", h5o::lastError.c_str());
+        if (location == "/")
+            error("h5delete: cannot delete root group '/'");
+
+        if (h5o::locationExists(file, location))
+        {
+            switch (file.getObjectType(location))
+            {
+            case H5::ObjectType::Group:
+            case H5::ObjectType::Dataset:
+            {
+                string::size_type pos = location.rfind('/');
+                string parent = (pos == 0) ? "/" : location.substr(0, pos);
+                string name = location.substr(pos + 1);
+                H5::Group g = file.getGroup(parent);
+                g.unlink(name);
+            }
+            break;
+            default:
+                error("h5delete: location '%s' has unsupported object type",
+                      location.c_str());
+            }
+        }
+        else
+        {
+            string::size_type pos = location.rfind('/');
+            string parent = (pos == 0) ? "/" : location.substr(0, pos);
+            string attrname = location.substr(pos + 1);
+            if (!h5o::locationExists(file, parent))
+                error("h5delete: location '%s' does not exist", location.c_str());
+
+            switch (file.getObjectType(parent))
+            {
+            case H5::ObjectType::Group:
+            {
+                H5::Group g = file.getGroup(parent);
+                if (!g.hasAttribute(attrname))
+                    error("h5delete: location '%s' does not exist", location.c_str());
+                g.deleteAttribute(attrname);
+            }
+            break;
+            case H5::ObjectType::Dataset:
+            {
+                H5::DataSet dset = file.getDataSet(parent);
+                if (!dset.hasAttribute(attrname))
+                    error("h5delete: location '%s' does not exist", location.c_str());
+                dset.deleteAttribute(attrname);
+            }
+            break;
+            default:
+                error("h5delete: location '%s' does not exist", location.c_str());
+            }
         }
     }
     catch (const H5::Exception &e)
