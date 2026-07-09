@@ -71,3 +71,36 @@ __h5delete__(filename,location);
 
 endfunction
 
+# tests for h5delete
+
+%!shared fname
+%! fname = tempname ();
+
+%!test
+%! h5create(fname, "/D1", [2 2], "datatype", "double");
+%! h5write(fname, "/D1", ones(2, 2));
+%! h5delete(fname, "/D1");
+%! fail("h5read(fname, '/D1')");
+
+%!test
+%! h5create(fname, "/G1/D1", [1 2], "datatype", "int32");
+%! h5write(fname, "/G1/D1", int32([1 2]));
+%! h5delete(fname, "/G1");
+%! fail("h5info(fname, '/G1')");
+
+%!test
+%! h5create(fname, "/D2", [1 1], "datatype", "double");
+%! h5writeatt(fname, "/D2", "units", "meters");
+%! h5delete(fname, "/D2/units");
+%! fail("h5readatt(fname, '/D2', 'units')");
+
+%!test
+%! h5create(fname, "/E1", [1 1], "datatype", "double");
+%! fail("h5delete(fname, '/')");
+
+%!test
+%! h5create(fname, "/E2", [1 1], "datatype", "double");
+%! fail("h5delete(fname, '/nonexistent_object')");
+
+%!error h5delete (fname)
+%!error h5delete ("nonexistingfile.h5", "/foo")

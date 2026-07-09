@@ -41,6 +41,7 @@ test_help('h5read');
 test_help('h5readatt');
 test_help('h5info');
 test_help('h5disp');
+test_help('h5delete');
 
 disp("------------ test functionality: ----------------")
 function ret = insert_chunk_at(mat, chunk, start)
@@ -277,6 +278,38 @@ check_att("/","testatt_logical")
 testatt_logical = rand(3,1)>0.5;
 check_att("/","testatt_logical")
 
+disp("Test h5delete...")
+
+function check_deleted(filename, location, read_expr)
+  try
+    eval(read_expr);
+    error(["h5delete failed: ", location, " still exists"]);
+  catch
+    disp(["ok - deleted ", location])
+  end
+end
+
+delete_fname = "test.h5";
+dset_loc = "/delete_test/dset";
+h5create(delete_fname, dset_loc, [2 2], "datatype", "double");
+h5write(delete_fname, dset_loc, ones(2, 2));
+h5delete(delete_fname, dset_loc);
+check_deleted(delete_fname, dset_loc, "h5read(delete_fname, dset_loc)");
+
+group_loc = "/delete_test/group";
+h5create(delete_fname, [group_loc "/dset"], [1 2], "datatype", "int32");
+h5write(delete_fname, [group_loc "/dset"], int32([1 2]));
+h5delete(delete_fname, group_loc);
+check_deleted(delete_fname, group_loc, "h5info(delete_fname, group_loc)");
+
+attr_parent = "/delete_test/attr_dset";
+attr_name = "units";
+h5create(delete_fname, attr_parent, [1 1], "datatype", "double");
+h5writeatt(delete_fname, attr_parent, attr_name, "meters");
+h5delete(delete_fname, [attr_parent "/" attr_name]);
+check_deleted(delete_fname, [attr_parent "/" attr_name],
+              "h5readatt(delete_fname, attr_parent, attr_name)");
+
 disp("------------ test failures and wrong arguments: ----------------")
 disp("read from a nonexisting file")
 try
@@ -313,6 +346,34 @@ try
   x.b="foo";
   h5create('test.h5','/foo',size(x),'datatype',class(x));
   h5write("test.h5","/foo",x)
+catch
+  disp(["error catched: ", lasterror.message])
+end
+
+disp("h5delete nonexistent location")
+try
+  h5delete("test.h5","/nonexistent_object")
+catch
+  disp(["error catched: ", lasterror.message])
+end
+
+disp("h5delete root group")
+try
+  h5delete("test.h5","/")
+catch
+  disp(["error catched: ", lasterror.message])
+end
+
+disp("h5delete with too few arguments")
+try
+  h5delete("test.h5")
+catch
+  disp(["error catched: ", lasterror.message])
+end
+
+disp("h5delete from nonexisting file")
+try
+  h5delete("nonexistingfile.h5","/foo")
 catch
   disp(["error catched: ", lasterror.message])
 end
